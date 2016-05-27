@@ -17,6 +17,6 @@
     "xmlDoc": true
   },
   "frameworks": {
-    "net4.5": {}
-   }
+    "net452": { }
+  }
 }
