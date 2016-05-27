@@ -13,7 +13,10 @@
 // limitations under the License.
 
 using System.ComponentModel;
+
+#if NET452
 using System.Net;
+#endif
 
 namespace Serilog.Sinks.Email
 {
@@ -42,10 +45,19 @@ namespace Serilog.Sinks.Email
             IsBodyHtml = false;
         }
 
+#if NETSTANDARD1_5
+        /// <summary>
+        /// Gets or sets the credentials used for authentication.
+        /// </summary>
+        public SimpleNetworkCredentials NetworkCredentials { get; set; }
+#endif
+
+#if NET452
         /// <summary>
         /// Gets or sets the credentials used for authentication.
         /// </summary>
         public ICredentialsByHost NetworkCredentials { get; set; }
+#endif
 
         /// <summary>
         /// Gets or sets the port used for the connection.
@@ -86,3 +98,4 @@ namespace Serilog.Sinks.Email
         public bool IsBodyHtml { get; set; }
     }
 }
+

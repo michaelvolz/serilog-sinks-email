@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
+#if NET452
 using System.Collections.Generic;
 using System.Net;
+#endif
+
+using System;
+using Serilog.Formatting.Display;
 using Serilog.Configuration;
 using Serilog.Events;
-using Serilog.Formatting.Display;
 using Serilog.Sinks.Email;
 using Serilog.Formatting;
 
@@ -29,6 +32,7 @@ namespace Serilog
     public static class LoggerConfigurationEmailExtensions
     {
         const string DefaultOutputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level}] {Message}{NewLine}{Exception}";
+
 
         /// <summary>
         /// Adds a sink that sends log events via email.
@@ -56,9 +60,9 @@ namespace Serilog
             IFormatProvider formatProvider = null,
             string mailSubject = EmailConnectionInfo.DefaultSubject)
         {
-            if (loggerConfiguration == null) throw new ArgumentNullException("loggerConfiguration");
-            if (fromEmail == null) throw new ArgumentNullException("fromEmail");
-            if (toEmail == null) throw new ArgumentNullException("toEmail");
+            if (loggerConfiguration == null) throw new ArgumentNullException(nameof(loggerConfiguration));
+            if (fromEmail == null) throw new ArgumentNullException(nameof(fromEmail));
+            if (toEmail == null) throw new ArgumentNullException(nameof(toEmail));
 
             var connectionInfo = new EmailConnectionInfo
             {
@@ -70,6 +74,7 @@ namespace Serilog
             return Email(loggerConfiguration, connectionInfo, outputTemplate, restrictedToMinimumLevel, batchPostingLimit, period, formatProvider);
         }
 
+#if NET452
         /// <summary>
         /// Adds a sink that sends log events via email.
         /// </summary>
@@ -100,9 +105,9 @@ namespace Serilog
             IFormatProvider formatProvider = null,
             string mailSubject = EmailConnectionInfo.DefaultSubject)
         {
-            if (loggerConfiguration == null) throw new ArgumentNullException("loggerConfiguration");
-            if (fromEmail == null) throw new ArgumentNullException("fromEmail");
-            if (toEmail == null) throw new ArgumentNullException("toEmail");
+            if (loggerConfiguration == null) throw new ArgumentNullException(nameof(loggerConfiguration));
+            if (fromEmail == null) throw new ArgumentNullException(nameof(fromEmail));
+            if (toEmail == null) throw new ArgumentNullException(nameof(toEmail));
 
             var connectionInfo = new EmailConnectionInfo
             {
@@ -146,9 +151,9 @@ namespace Serilog
             IFormatProvider formatProvider = null,
             string mailSubject = EmailConnectionInfo.DefaultSubject)
         {
-            if (loggerConfiguration == null) throw new ArgumentNullException("loggerConfiguration");
-            if (fromEmail == null) throw new ArgumentNullException("fromEmail");
-            if (toEmails == null) throw new ArgumentNullException("toEmails");
+            if (loggerConfiguration == null) throw new ArgumentNullException(nameof(loggerConfiguration));
+            if (fromEmail == null) throw new ArgumentNullException(nameof(fromEmail));
+            if (toEmails == null) throw new ArgumentNullException(nameof(toEmails));
             
             var connectionInfo = new EmailConnectionInfo
             {
@@ -161,6 +166,7 @@ namespace Serilog
 
             return Email(loggerConfiguration, connectionInfo, outputTemplate, restrictedToMinimumLevel, batchPostingLimit, period, formatProvider, mailSubject);
         }
+#endif
 
         /// <summary>
         /// Adds a sink that sends log events via email.
@@ -186,7 +192,7 @@ namespace Serilog
             IFormatProvider formatProvider = null,
             string mailSubject = EmailConnectionInfo.DefaultSubject)
         {
-            if (connectionInfo == null) throw new ArgumentNullException("connectionInfo");
+            if (connectionInfo == null) throw new ArgumentNullException(nameof(connectionInfo));
 
             var defaultedPeriod = period ?? EmailSink.DefaultPeriod;
             var formatter = new MessageTemplateTextFormatter(outputTemplate, formatProvider);
@@ -217,8 +223,8 @@ namespace Serilog
             TimeSpan? period = null,
             string mailSubject = EmailConnectionInfo.DefaultSubject)
         {
-            if (connectionInfo == null) throw new ArgumentNullException("connectionInfo");
-            if (textFormatter == null) throw new ArgumentNullException("textFormatter");
+            if (connectionInfo == null) throw new ArgumentNullException(nameof(connectionInfo));
+            if (textFormatter == null) throw new ArgumentNullException(nameof(textFormatter));
 
             var defaultedPeriod = period ?? EmailSink.DefaultPeriod;
 

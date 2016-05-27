@@ -12,16 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if NET452
+using System.Net.Mail;
+using Serilog.Debugging;
+using System.Text;
+#endif
+
+#if NETSTANDARD1_5
+using MimeKit;
+using MailKit.Net.Smtp;
+#endif
+
+
 using System;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Mail;
-using System.Text;
-using System.Threading.Tasks;
-using Serilog.Debugging;
 using Serilog.Events;
 using Serilog.Formatting;
 using Serilog.Sinks.PeriodicBatching;
+
+// ReSharper disable RedundantNameQualifier
 
 namespace Serilog.Sinks.Email
 {
@@ -29,7 +40,9 @@ namespace Serilog.Sinks.Email
     {
         readonly EmailConnectionInfo _connectionInfo;
 
-        readonly SmtpClient _smtpClient;
+#if NET452
+        readonly System.Net.Mail.SmtpClient _smtpClient;
+#endif
 
         readonly ITextFormatter _textFormatter;
 
@@ -54,14 +67,18 @@ namespace Serilog.Sinks.Email
         public EmailSink(EmailConnectionInfo connectionInfo, int batchSizeLimit, TimeSpan period, ITextFormatter textFormatter)
             : base(batchSizeLimit, period)
         {
-            if (connectionInfo == null) throw new ArgumentNullException("connectionInfo");
+            if (connectionInfo == null) throw new ArgumentNullException(nameof(connectionInfo));
 
             _connectionInfo = connectionInfo;
             _textFormatter = textFormatter;
+
+#if NET452
             _smtpClient = CreateSmtpClient();
             _smtpClient.SendCompleted += SendCompletedCallback;
+#endif
         }
 
+#if NET452
         /// <summary>
         /// Reports if there is an error in sending an email
         /// </summary>
@@ -78,51 +95,9 @@ namespace Serilog.Sinks.Email
                 SelfLog.WriteLine("Received failed result {0}: {1}", "Error", e.Error);
             }
         }
+#endif
 
-        /// <summary>
-        /// Free resources held by the sink.
-        /// </summary>
-        /// <param name="disposing">If true, called because the object is being disposed; if false,
-        /// the object is being disposed from the finalizer.</param>
-        protected override void Dispose(bool disposing)
-        {
-            // First flush the buffer
-            base.Dispose(disposing);
-
-            if (disposing)
-                _smtpClient.Dispose();
-        }
-
-        protected override void EmitBatch(IEnumerable<LogEvent> events)
-        {
-            if (events == null)
-                throw new ArgumentNullException("events");
-            var payload = new StringWriter();
-
-            foreach (var logEvent in events)
-            {
-                _textFormatter.Format(logEvent, payload);
-            }
-
-            var mailMessage = new MailMessage
-            {
-                From = new MailAddress(_connectionInfo.FromEmail),
-                Subject = _connectionInfo.EmailSubject,
-                Body = payload.ToString(),
-                BodyEncoding = Encoding.UTF8,
-                SubjectEncoding = Encoding.UTF8,
-                IsBodyHtml = _connectionInfo.IsBodyHtml
-            };
-
-            foreach (var recipient in _connectionInfo.ToEmail.Split(",;".ToCharArray(), StringSplitOptions.RemoveEmptyEntries))
-            {
-                mailMessage.To.Add(recipient);
-            }
-
-            _smtpClient.Send(mailMessage);
-        }
-
-#if NET45
+#if NETSTANDARD1_5
         /// <summary>
         /// Emit a batch of log events, running asynchronously.
         /// </summary>
@@ -131,9 +106,48 @@ namespace Serilog.Sinks.Email
         /// not both.</remarks>
         protected override async Task EmitBatchAsync(IEnumerable<LogEvent> events)
         {
-
             if (events == null)
-                throw new ArgumentNullException("events");
+                throw new ArgumentNullException(nameof(events));
+            var payload = new StringWriter();
+
+            foreach (var logEvent in events)
+            {
+                _textFormatter.Format(logEvent, payload);
+            }
+
+            var mailMessage = new MimeKit.MimeMessage();
+            mailMessage.From.Add(new MailboxAddress(_connectionInfo.FromEmail, _connectionInfo.FromEmail));
+            mailMessage.Subject = _connectionInfo.EmailSubject;
+            mailMessage.Body = new TextPart("plain") { Text = payload.ToString() };
+
+            if (_connectionInfo.IsBodyHtml)
+                mailMessage.Body = new TextPart("html") { Text = payload.ToString() };
+
+            using (var client = new SmtpClient())
+            {
+                // Note: since we don't have an OAuth2 token, disable
+                // the XOAUTH2 authentication mechanism.
+                client.AuthenticationMechanisms.Remove("XOAUTH2");
+                var credentials = _connectionInfo.NetworkCredentials;
+                client.Authenticate(credentials.UserName, credentials.Password);
+                await client.ConnectAsync(_connectionInfo.MailServer, _connectionInfo.Port, _connectionInfo.EnableSsl).ConfigureAwait(false);
+                await client.SendAsync(mailMessage).ConfigureAwait(false);
+                await client.DisconnectAsync(true).ConfigureAwait(false);
+            }
+        }
+#endif
+
+#if NET452
+        /// <summary>
+        /// Emit a batch of log events, running asynchronously.
+        /// </summary>
+        /// <param name="events">The events to emit.</param>
+        /// <remarks>Override either <see cref="PeriodicBatchingSink.EmitBatch"/> or <see cref="PeriodicBatchingSink.EmitBatchAsync"/>,
+        /// not both.</remarks>
+        protected override async Task EmitBatchAsync(IEnumerable<LogEvent> events)
+        {
+            if (events == null)
+                throw new ArgumentNullException(nameof(events));
             var payload = new StringWriter();
 
             foreach (var logEvent in events)
@@ -156,9 +170,8 @@ namespace Serilog.Sinks.Email
                 mailMessage.To.Add(recipient);
             }
 
-            await _smtpClient.SendMailAsync(mailMessage);
+            await _smtpClient.SendMailAsync(mailMessage).ConfigureAwait(false);
         }
-#endif
 
         private SmtpClient CreateSmtpClient()
         {
@@ -177,5 +190,6 @@ namespace Serilog.Sinks.Email
 
             return smtpClient;
         }
+#endif
     }
 }

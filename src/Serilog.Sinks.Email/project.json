@@ -9,7 +9,7 @@
     "iconUrl": "http://serilog.net/images/serilog-sink-nuget.png"
   },
   "dependencies": {
-    "Serilog": "2.0.0-rc-556",
+    "Serilog": "2.0.0-rc-577",
     "Serilog.Sinks.PeriodicBatching": "2.0.0-rc-707"
   },
   "buildOptions": {
@@ -17,6 +17,15 @@
     "xmlDoc": true
   },
   "frameworks": {
-    "net452": { }
+    "net452": {
+      "dependencies": {
+      }
+    },
+    "netstandard1.5": {
+      "imports": [ "dnxcore50" ],
+      "dependencies": {
+        "MailKit": "1.3.0-rc1-1"
+      }
+    }
   }
 }
